@@ -1,0 +1,106 @@
+---
+title: "Filtering"
+author: "Carles"
+date: "17/02/2023"
+output:
+  html_document:
+    theme: readable
+    toc: yes
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::include_graphics
+options(width = 50)
+```
+
+# Opening a new project:
+
+## Necessary libraries:
+
+```{r, message=FALSE, warning=FALSE}
+#install.packages("plyr") 
+library(plyr)
+library(vegan)
+# library(scales)
+# library(RColorBrewer)
+# library(VennDiagram)
+# library(gplots)
+# library(ggplot2)
+# library(ggpubr)
+# library(car)
+# library(pairwiseAdonis)
+# library(ggVennDiagram)
+# library(ggplot2)
+# library(eulerr)
+# library(devtools)
+# library(wrapr)
+ library(tidyr)
+ library(dplyr)
+ library(reshape)
+ library(reshape2)
+ library(data.table)
+# devtools::install_github("pmartinezarbizu/pairwiseAdonis/pairwiseAdonis")
+# library(pairwiseAdonis)
+# library(tibble)
+ library(tidyverse)
+ library(dtplyr)
+# install.packages("rlang")
+# library(rlang)
+# sessionInfo()
+if (!require("rstudioapi")){
+  install.packages("rstudioapi", dependencies = TRUE)
+  library(rstudioapi)}
+```
+
+### Data:
+
+```{r}
+setwd(dirname(getActiveDocumentContext()$path))
+
+data <-read.table("Abundance_matrix.txt", sep="\t", header=T, stringsAsFactors = F)
+codes<-read.delim("metadata.txt", header = TRUE, sep = "\t", dec = ".")
+
+rownames(data) <- data$X
+ASV_ID$ID <- as.data.frame(data$ID)
+ASV_ID$ASV <- data$X
+
+# We are left with only the numeric columns
+data<-data[,-c(1,10,12,13,20)]
+
+# Keep only no-zero abundance ASV
+data <- data[rowSums(data[])>0,]
+ASV_ID <- ASV_ID[ASV_ID$ASV %in% rownames(data), ]
+
+export_data <- cbind(data,ASV_ID$ID)
+
+write.table(export_data, "Abundance_matrix_nozero.txt", sep= "\t")
+
+# Relative Frequency
+microrf<-as.data.frame(proportions(as.matrix(data[,1:15]),2))
+
+export_rf <- cbind(microrf,ASV_ID$ID)
+
+
+write.table(export_rf, "Relativefreq_matrix_nozero.txt", sep= "\t")
+
+#Binary Matrix:
+microb <- micro[,c(1:210)]
+microb <- as.data.frame(microb)
+microb[microb>0] <- 1
+
+
+microb <- as.data.frame(microb)
+
+# write.table(microb, "asv_taxonomy_liam_binary.txt", sep= "\t")
+```
+
+```{r}
+##### Fem Circos #####
+Circos<-aggregate(micro[,1:210],list(micro$ID),sum)
+names(Circos)[1]<-"ID"
+write.table(Circos, file="circos_raw.csv", sep = " ")
+```
+

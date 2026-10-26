@@ -1,0 +1,367 @@
+---
+title: "Species Richness"
+author: "Carles Galià Camps"
+date: "19/02/2023"
+output:
+  html_document:
+    theme: readable
+    toc: yes
+editor_options:
+  chunk_output_type: console
+---
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::include_graphics
+options(width = 50)
+```
+
+# Opening a new project:
+## Necessary libraries:
+```{r, message=FALSE, warning=FALSE}
+library(ggpubr)
+library(vegan)
+library(scales)
+library(RColorBrewer)
+library(VennDiagram)
+library(gplots)
+library(car)
+library(ggVennDiagram)
+library(ggplot2)
+library(eulerr)
+library(devtools)
+library(dplyr)
+library(reshape)
+library(reshape2)
+library(data.table)
+library(tidyverse)
+library(lme4)
+library(rsq)
+library(emmeans)
+library(dplyr)
+devtools::install_github("pmartinezarbizu/pairwiseAdonis/pairwiseAdonis")
+library(pairwiseAdonis)
+if (!require("rstudioapi")){
+  install.packages("rstudioapi", dependencies = TRUE)
+  library(rstudioapi)}
+library(nortest)
+library(afex)
+library(lmtest)
+```
+
+```{r}
+setwd("E:/Splicata/16S-RNA-DNA/3Microbioma")
+codes <- read.table("metadata.txt", header = TRUE)
+micro <- read.table("Abundance_matrix_nozero.txt", sep="\t", header=T)
+micro <- micro[,c(1:15)]
+
+```
+
+```{r}
+#shannon
+shan<-as.data.frame(diversity(micro,index="shannon",MARGIN = 2))
+shan <- cbind(shan,codes)
+colnames(shan)[1]<- c("Shannon")
+
+shanBAR <- shan[which(shan$Pop=="BAR"),]
+sd(shanBAR$Shannon)
+
+shanBLA <- shan[which(shan$Pop=="BLA"),]
+sd(shanBLA$Shannon)
+
+shanVIL <- shan[which(shan$Pop=="VIL"),]
+sd(shanVIL$Shannon)
+
+shanAA <- shan[which(shan$Chr2=="AA"),]
+sd(shanAA$Shannon)
+shanAB <- shan[which(shan$Chr2=="AB"),]
+sd(shanAB$Shannon)
+
+pdf("Shan_pop.pdf", width= 4, height=2.25)
+ggplot(shan, aes(y=Shannon,x=Pop, fill=Pop)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1)+
+  xlab(NULL) + 
+  ylab("") +
+     scale_fill_manual( values = c("indianred","steelblue","yellow3")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+pdf("Shan_chr2_allsamples.pdf", width= 4, height=2.25)
+ggplot(shan, aes(y=Shannon,x=Chr2, fill=Chr2)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Shan_chr4_allsamples.pdf", width= 4, height=2.25)
+ggplot(shan, aes(y=Shannon,x=Chr4, fill=Chr4)) + 
+   geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Shan_chr11_allsamples.pdf", width= 4, height=2.25)
+ggplot(shan, aes(y=Shannon,x=Chr11, fill=Chr11)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Shan_chr16_allsamples.pdf", width= 4, height=2.25)
+  ggplot(shan, aes(y=Shannon,x=Chr16, fill=Chr16)) + 
+    geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+```
+
+```{r}
+#Richness
+rich<-rarefy(micro,min(colSums(micro)),MARGIN = 2)
+rich <- as.data.frame(rich)
+rich <- cbind(rich,codes)
+colnames(rich)[1] <- c("Richness")
+
+
+richBAR <- rich[which(rich$Pop=="BAR"),]
+median(richBAR$Richness)
+
+richBLA <- rich[which(rich$Pop=="BLA"),]
+median(richBLA$Richness)
+
+richVIL <- rich[which(rich$Pop=="VIL"),]
+median(richVIL$Richness)
+
+rich2AA <- rich[which(rich$Chr2=="AA"),]
+sd(rich2AA$Richness)
+rich2AB <- rich[which(rich$Chr2=="AB"),]
+sd(rich2AB$Richness)
+
+rich16AA <- rich[which(rich$Chr16=="AA"),]
+sd(rich16AA$Richness)
+rich16AB <- rich[which(rich$Chr16=="AB"),]
+sd(rich16AB$Richness)
+
+
+pdf("Rich_pop.pdf", width= 2.5, height=5)
+ggplot(rich, aes(y=Richness,x=Pop, fill=Pop)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1)+
+  xlab(NULL) + 
+  ylab("") +
+     scale_fill_manual( values = c("indianred","steelblue","yellow3")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+  #+scale_y_log10()
+dev.off()
+
+pdf("Rich_chr2_allsamples.pdf", width= 4, height=2.25)
+ggplot(rich, aes(y=Richness,x=Chr2, fill=Chr2)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Rich_chr4_allsamples.pdf", width= 4, height=2.25)
+ggplot(rich, aes(y=Richness,x=Chr4,  fill=Chr4)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Rich_chr11_allsamples.pdf", width= 4, height=2.25)
+ggplot(rich, aes(y=Richness,x=Chr11,  fill=Chr11)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+
+pdf("Rich_chr16_allsamples.pdf", width= 4, height=2.25)
+ggplot(rich, aes(y=Richness,x=Chr16, fill=Chr16)) + 
+  geom_boxplot(aes(alpha=0.5), outlier.size = 0, lwd=0.5) +
+  geom_jitter(size=3, position=position_jitterdodge(0.5), pch=4, stroke=1) +
+  xlab(NULL) + 
+    scale_fill_manual( values = c("#ecd6c0","#bf9780","#916b56")) +
+  theme_classic() +
+  theme(legend.position="none", 
+         panel.grid.minor = element_blank(), 
+         panel.grid.major = element_blank(),
+         panel.background = element_rect(fill = "white", colour = "white"))
+dev.off()
+
+```
+
+
+```{r}
+# GLM
+library(lmtest)
+
+#Shannon
+GLM_Pop <-glm(rank(Shannon) ~ Pop, data = shan)
+qqnorm(resid(GLM_Pop)) + qqline(resid(GLM_Pop))
+hist(resid(GLM_Pop))
+shapiro.test(residuals(GLM_Pop))
+bptest(GLM_Pop)
+Anova(GLM_Pop, test="F")
+rsq(GLM_Pop,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_chr2 <-glm(rank(Shannon) ~ Chr2, data = shan)
+qqnorm(resid(GLM_chr2)) + qqline(resid(GLM_chr2))
+hist(resid(GLM_chr2))
+shapiro.test(residuals(GLM_chr2))
+bptest(GLM_chr2)
+Anova(GLM_chr2, test="F")
+rsq(GLM_chr2,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_chr4 <-glm(rank(Shannon) ~ Chr4, data = shan[c(-14),])
+qqnorm(resid(GLM_chr4)) + qqline(resid(GLM_chr4))
+hist(resid(GLM_chr4))
+shapiro.test(residuals(GLM_chr4))
+bptest(GLM_chr4)
+Anova(GLM_chr4, test="F")
+rsq(GLM_chr4,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_chr11 <-glm(rank(Shannon) ~ Chr11, data = shan[-c(8,10),])
+qqnorm(resid(GLM_chr11)) + qqline(resid(GLM_chr11))
+hist(resid(GLM_chr11))
+shapiro.test(residuals(GLM_chr11))
+bptest(GLM_chr11)
+Anova(GLM_chr11, test="F")
+rsq(GLM_chr11,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_chr16 <-glm(rank(Shannon) ~ Chr16, data = shan)
+qqnorm(resid(GLM_chr16)) + qqline(resid(GLM_chr16))
+hist(resid(GLM_chr16))
+shapiro.test(residuals(GLM_chr16))
+bptest(GLM_chr16)
+Anova(GLM_chr16, test="F")
+rsq(GLM_chr16,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+
+GLM_Pop2 <- emmeans(GLM_Pop, ~ Pop)
+contrast(GLM_Pop2, method="tukey", simple="each", combine = TRUE, adjust="none")
+
+GLM_shan2 <- emmeans(GLM_chr2, ~ Chr2)
+contrast(GLM_shan2, method="tukey", simple="each", combine = TRUE, adjust="none")
+pdf("Shan_Inv2.pdf", height=4, width=5)
+emmip(GLM_chr2, ~Chr2, CI=TRUE, dodge = 0.6) + theme(legend.position = "bottom") + scale_colour_manual(name = "Karyotype", breaks=c("AA", "AB"), values=c("#ecd6c0","#bf9780")) 
+dev.off()
+
+#Richness
+GLM_Rich_pop <- glm(rank(Richness) ~ Pop, data = rich)
+qqnorm(resid(GLM_Rich_pop)) + qqline(resid(GLM_Rich_pop))
+hist(resid(GLM_Rich_pop))
+shapiro.test((residuals(GLM_Rich_pop)))
+bptest(GLM_Rich_pop)
+Anova(GLM_Rich_pop, test="F")
+rsq(GLM_Rich_pop,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_Rich_chr2 <- glm(rank(Richness) ~ Chr2, data = rich)
+qqnorm(resid(GLM_Rich_chr2)) + qqline(resid(GLM_Rich_chr2))
+hist(resid(GLM_Rich_chr2))
+shapiro.test((residuals(GLM_Rich_chr2)))
+bptest(GLM_Rich_chr2)
+Anova(GLM_Rich_chr2, test="F")
+rsq(GLM_Rich_chr2,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_Rich_chr4 <- glm(rank(Richness) ~ Chr4, data = rich[c(-14),])
+qqnorm(resid(GLM_Rich_chr4)) + qqline(resid(GLM_Rich_chr4))
+hist(resid(GLM_Rich_chr4))
+shapiro.test((residuals(GLM_Rich_chr4)))
+bptest(GLM_Rich_chr4)
+Anova(GLM_Rich_chr4, test="F")
+rsq(GLM_Rich_chr4,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_Rich_chr11 <- glm(rank(Richness) ~ Chr11, data = rich[-c(8,10),])
+qqnorm(resid(GLM_Rich_chr11)) + qqline(resid(GLM_Rich_chr11))
+hist(resid(GLM_Rich_chr11))
+shapiro.test((residuals(GLM_Rich_chr11)))
+bptest(GLM_Rich_chr11)
+Anova(GLM_Rich_chr11, test="F")
+rsq(GLM_Rich_chr11,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+GLM_Rich_chr16 <- glm(rank(Richness) ~ Chr16, data = rich)
+qqnorm(resid(GLM_Rich_chr16)) + qqline(resid(GLM_Rich_chr16))
+hist(resid(GLM_Rich_chr16))
+shapiro.test((residuals(GLM_Rich_chr16)))
+bptest(GLM_Rich_chr16)
+Anova(GLM_Rich_chr16, test="F")
+rsq(GLM_Rich_chr16,adj=TRUE,type=c('v','kl','sse','lr','n'))
+
+
+GLM_pop <- emmeans(GLM_Rich_pop, ~ Pop)
+contrast(GLM_pop, method="tukey", simple="each", combine = T, adjust="none")
+pdf("Rich_Pop.pdf", height=4, width=5)
+emmip(GLM_Rich_pop, ~Pop, CI=TRUE, dodge = 0.6) + theme(legend.position = "bottom") + scale_colour_manual(name = "Population", breaks=c("BAR", "BLA", "VIL"), values=c("#2E2E2E", "#E67E22","#0B00FB")) 
+dev.off()
+
+GLM_rich2 <- emmeans(GLM_Rich_chr2, ~ Chr2)
+contrast(GLM_rich2, method="tukey", simple="each", combine = TRUE, adjust="none")
+pdf("Rich_Inv2.pdf", height=4, width=5)
+emmip(GLM_Rich_chr2, ~Chr2, CI=TRUE, dodge = 0.6) + theme(legend.position = "bottom") + scale_colour_manual(name = "Population", breaks=c("BAR", "BLA", "VIL"), values=c("#2E2E2E", "#E67E22","#0B00FB")) 
+dev.off()
+
+GLM_rich16 <- emmeans(GLM_Rich_chr16, ~ Chr16)
+contrast(GLM_rich16, method="tukey", simple="each", combine = TRUE, adjust="none")
+pdf("Rich_Inv16.pdf", height=4, width=5)
+emmip(GLM_Rich_chr16, ~Chr16, CI=TRUE, dodge = 0.6) + theme(legend.position = "bottom") + scale_colour_manual(name = "Population", breaks=c("BAR", "BLA", "VIL"), values=c("#2E2E2E", "#E67E22","#0B00FB")) 
+dev.off()
+
+```
